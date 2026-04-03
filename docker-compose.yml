@@ -1,9 +1,10 @@
+# Redis is NOT published to the host — only video-api / video-worker reach it (safer on RunPod).
 services:
   redis:
     image: redis:7-alpine
     command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
-    ports:
-      - "6379:6379"
+    expose:
+      - "6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -12,6 +13,7 @@ services:
 
   video-api:
     build: .
+    restart: unless-stopped
     ports:
       - "4100:4100"
     env_file: .env
@@ -31,6 +33,7 @@ services:
 
   video-worker:
     build: .
+    restart: unless-stopped
     command: >
       celery -A worker.celery_app worker -l info -c 1 -Q video-jobs
     env_file: .env

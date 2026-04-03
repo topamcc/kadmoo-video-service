@@ -48,3 +48,8 @@ Set `LTX_STUB_MODE=false` and install/configure **ltx-pipelines** against `LTX_M
 - `VIDEO_SERVICE_API_KEY` — same as `API_KEY` here
 - `USE_EXTERNAL_VIDEO=true`
 - `VIDEO_SERVICE_WEBHOOK_SECRET` — same as `WEBHOOK_HMAC_SECRET` here
+- `NEXT_PUBLIC_APP_URL` — public HTTPS URL of the app (required for `/api/webhooks/video`)
+
+## Deploy on RunPod / GPU VPS
+
+Step-by-step (Hebrew checklist): **[docs/DEPLOY-RUNPOD.md](./docs/DEPLOY-RUNPOD.md)**
