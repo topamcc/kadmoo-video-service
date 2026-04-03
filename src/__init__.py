@@ -1,0 +1,1 @@
+"""Kadmoo GPU video service."""
