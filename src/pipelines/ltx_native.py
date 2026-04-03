@@ -35,6 +35,8 @@ def _dims(req: VideoJobRequest) -> tuple[int, int]:
     short = {"720p": 720, "1080p": 1080, "4k": 2160}[req.resolution]
     if req.aspect_ratio == "9:16":
         w, h = short, int(short * 16 / 9)
+    elif req.aspect_ratio == "4:5":
+        w, h = short, int(short * 5 / 4)
     elif req.aspect_ratio == "1:1":
         w, h = short, short
     elif req.aspect_ratio == "16:9":

@@ -5,11 +5,14 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import logging
 import time
 import httpx
 
 from config import get_settings
 from shared.types import WebhookPayload
+
+logger = logging.getLogger(__name__)
 
 
 def sign_body(secret: str, body: str) -> str:
@@ -34,15 +37,31 @@ def send_webhook_sync(callback_url: str, payload: WebhookPayload) -> None:
     }
     max_retries = 3
     backoff = 1.0
+    last_err: str | None = None
     for attempt in range(max_retries):
         try:
             with httpx.Client(timeout=30.0) as client:
                 r = client.post(callback_url, content=body, headers=headers)
             if r.is_success:
                 return
+            last_err = f"HTTP {r.status_code} {r.text[:200]!r}"
             if r.status_code < 500 and r.status_code != 429:
+                logger.warning(
+                    "Webhook non-retryable failure job=%s event=%s %s",
+                    payload.job_id,
+                    payload.event,
+                    last_err,
+                )
                 return
-        except httpx.HTTPError:
-            pass
-        time.sleep(backoff)
-        backoff *= 2
+        except httpx.HTTPError as e:
+            last_err = str(e)
+        if attempt < max_retries - 1:
+            time.sleep(backoff)
+            backoff *= 2
+    logger.error(
+        "Webhook exhausted retries job=%s event=%s url=%s last=%s",
+        payload.job_id,
+        payload.event,
+        callback_url[:80],
+        last_err,
+    )

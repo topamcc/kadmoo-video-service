@@ -34,7 +34,7 @@ class VideoJobRequest(BaseModel):
     scenes: list[SceneConfig] = Field(default_factory=list)
     resolution: Literal["720p", "1080p", "4k"] = "1080p"
     fps: int = 50
-    aspect_ratio: Literal["9:16", "1:1", "16:9"] = "9:16"
+    aspect_ratio: Literal["9:16", "1:1", "16:9", "4:5"] = "9:16"
     generate_bgm: bool = True
     identity_lock: bool = True
     template_id: str = "smb-vo-external"

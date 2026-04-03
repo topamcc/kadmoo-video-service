@@ -28,6 +28,9 @@ def _dims_for_aspect(ar: str, resolution: str) -> tuple[int, int]:
     short = {"720p": 720, "1080p": 1080, "4k": 2160}[resolution]
     if ar == "9:16":
         return short, int(short * 16 / 9)
+    if ar == "4:5":
+        # Portrait feed: width : height = 4 : 5
+        return short, int(short * 5 / 4)
     if ar == "1:1":
         return short, short
     if ar == "16:9":

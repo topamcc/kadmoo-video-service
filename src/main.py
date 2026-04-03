@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -12,10 +13,16 @@ from api.routes.jobs import router as jobs_router
 from api.routes.training import router as training_router
 from config import get_settings
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    _ = get_settings()
+    settings = get_settings()
+    if not (settings.webhook_hmac_secret or "").strip():
+        logger.warning(
+            "WEBHOOK_HMAC_SECRET is empty — progress callbacks to the Next.js app will not be sent.",
+        )
     yield
 
 
