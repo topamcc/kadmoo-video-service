@@ -1,5 +1,14 @@
 # RunPod: הרצה בלי Docker (חובה בתבניות PyTorch / קונטיינר ללא הרשאות)
 
+## אוטומציה (מומלץ)
+
+מסמך עברית + סקריפטים:
+
+- **[RUNPOD-ONE-PAGE-HE.md](./RUNPOD-ONE-PAGE-HE.md)** — צ’ק־ליסט קצר
+- `scripts/runpod-bootstrap.sh` — התקנת חבילות, `git clone`/`pull`, `pip`, יצירת `.env`, תיקון `REDIS_URL` ל־localhost
+- `scripts/runpod-start.sh` — Redis + API + Worker ברקע (`nohup`)
+- `scripts/runpod-stop.sh` / `scripts/runpod-status.sh`
+
 ## למה Docker נכשל
 
 בלוג של `dockerd` מופיעים בדרך כלל:
