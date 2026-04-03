@@ -41,3 +41,35 @@ def upload_video_file(
 
     public = f"{base}/storage/v1/object/public/{bucket}/{object_path}"
     return public, object_path, size
+
+
+def upload_bytes_to_storage(
+    data: bytes,
+    *,
+    object_path: str,
+    content_type: str,
+) -> tuple[str, str, int]:
+    """Upload arbitrary bytes (e.g. LoRA .safetensors). Returns (public_url, storage_path, size)."""
+    settings = get_settings()
+    if not settings.supabase_url or not settings.supabase_service_role_key:
+        raise RuntimeError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required for upload")
+
+    size = len(data)
+    bucket = settings.supabase_storage_bucket
+    base = settings.supabase_url.rstrip("/")
+    url = f"{base}/storage/v1/object/{bucket}/{object_path}"
+
+    headers = {
+        "Authorization": f"Bearer {settings.supabase_service_role_key}",
+        "Content-Type": content_type,
+        "apikey": settings.supabase_service_role_key,
+        "x-upsert": "true",
+    }
+
+    with httpx.Client(timeout=300.0) as client:
+        r = client.post(url, content=data, headers=headers)
+        if r.status_code not in (200, 201):
+            raise RuntimeError(f"Supabase upload failed: {r.status_code} {r.text}")
+
+    public = f"{base}/storage/v1/object/public/{bucket}/{object_path}"
+    return public, object_path, size

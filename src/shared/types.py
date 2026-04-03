@@ -14,6 +14,12 @@ class SceneConfig(BaseModel):
     keyframe_index: int | None = None
 
 
+RenderMode = Literal["image_to_video", "audio_to_video"]
+
+# diffusers_i2v = scripts/ltx_i2v_scene.py; official_* tries LTX_OFFICIAL_I2V_MODULE from LTX_REPO_PATH first
+PipelineMode = Literal["diffusers_i2v", "distilled_fast", "two_stage_hq"]
+
+
 class VideoJobRequest(BaseModel):
     job_id: str
     site_id: str
@@ -34,6 +40,16 @@ class VideoJobRequest(BaseModel):
     template_id: str = "smb-vo-external"
     site_name: str = ""
     full_narration_for_asset: str = ""
+    # LoRA weights (HTTP URL to .safetensors). Flux LoRAs are not LTX-compatible — use LTX-trained weights.
+    style_lora_url: str | None = None
+    avatar_lora_url: str | None = None
+    style_lora_trigger_word: str = ""
+    avatar_lora_trigger_word: str = ""
+    lora_strength: float = Field(default=1.0, ge=0.0, le=2.0)
+    render_mode: RenderMode = "image_to_video"
+    pipeline_mode: PipelineMode = "diffusers_i2v"
+    enhance_prompt: bool = False
+    smooth_scene_transitions: bool = False
 
 
 class VideoJobStatus(BaseModel):

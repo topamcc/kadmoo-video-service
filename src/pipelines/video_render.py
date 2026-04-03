@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
-import tempfile
 from pathlib import Path
 
 import httpx
 
 from config import get_settings
 from pipelines.identity import describe_identity_prompt
+from pipelines.lora_cache import download_optional
+from pipelines.ltx_native import concat_segments, render_ltx_i2v_multiscene
 from shared.errors import VideoJobError
 from shared.types import SceneConfig, VideoJobRequest
 
@@ -31,6 +33,32 @@ def _dims_for_aspect(ar: str, resolution: str) -> tuple[int, int]:
     if ar == "16:9":
         return int(short * 16 / 9), short
     return short, int(short * 16 / 9)
+
+
+def _probe_audio_duration(audio_mp3: Path) -> float:
+    try:
+        out = subprocess.check_output(
+            [
+                "ffprobe",
+                "-v",
+                "quiet",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "json",
+                str(audio_mp3),
+            ],
+            text=True,
+        )
+        return float(json.loads(out).get("format", {}).get("duration") or 5.0)
+    except (
+        subprocess.CalledProcessError,
+        FileNotFoundError,
+        KeyError,
+        ValueError,
+        json.JSONDecodeError,
+    ):
+        return 5.0
 
 
 def render_stub_slideshow(
@@ -144,6 +172,55 @@ def render_stub_slideshow(
     )
 
 
+def _mux_video_audio(silent_video: Path, audio_mp3: Path, out_video: Path) -> None:
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(silent_video),
+            "-i",
+            str(audio_mp3),
+            "-c:v",
+            "copy",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            "-shortest",
+            str(out_video),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
+def _prepare_keyframes(req: VideoJobRequest, work_dir: Path) -> tuple[list[Path], list[SceneConfig]]:
+    images_dir = work_dir / "kf_dl"
+    images_dir.mkdir(parents=True, exist_ok=True)
+    paths: list[Path] = []
+    scenes = list(req.scenes or [])
+    n_kf = len(req.keyframe_urls)
+    if len(scenes) < n_kf:
+        per = 5.0
+        while len(scenes) < n_kf:
+            scenes.append(
+                SceneConfig(
+                    visual_prompt_en="",
+                    sound_intent_en="ambience",
+                    duration_s=per,
+                    keyframe_index=len(scenes),
+                )
+            )
+    for i, url in enumerate(req.keyframe_urls):
+        ext = ".png" if ".png" in url.lower() else ".jpg"
+        p = images_dir / f"kf{i}{ext}"
+        _download_file(url, p)
+        paths.append(p)
+    return paths, scenes
+
+
 def run_ltx_pipeline(
     req: VideoJobRequest,
     work_dir: Path,
@@ -151,16 +228,54 @@ def run_ltx_pipeline(
     out_video: Path,
 ) -> None:
     """
-    Entry: real LTX-2 when ltx_stub_mode=false and model paths are set; else stub slideshow.
+    Stub slideshow when LTX_STUB_MODE or no LTX_MODEL_PATH; else native I2V subprocess per scene.
     """
     settings = get_settings()
     _ = describe_identity_prompt(req.photo_url, req.identity_lock)
 
-    if settings.ltx_stub_mode or not settings.ltx_model_path:
+    if settings.ltx_stub_mode or not settings.ltx_model_path.strip():
         render_stub_slideshow(req, work_dir, audio_mp3, out_video)
         return
 
-    raise VideoJobError(
-        "LTX-2 native path is not wired in this build. Set LTX_STUB_MODE=true "
-        "or integrate ltx-pipelines against LTX_MODEL_PATH.",
+    key_paths, scenes = _prepare_keyframes(req, work_dir)
+    style_lora = download_optional(req.style_lora_url, work_dir / "loras" / "style.safetensors")
+    avatar_lora = download_optional(req.avatar_lora_url, work_dir / "loras" / "avatar.safetensors")
+
+    if req.render_mode == "audio_to_video":
+        # Single clip driven by narration length (first keyframe)
+        dur = _probe_audio_duration(audio_mp3)
+        scenes_a2v = [
+            SceneConfig(
+                visual_prompt_en=scenes[0].visual_prompt_en if scenes else "natural speaking, subtle head motion",
+                sound_intent_en=scenes[0].sound_intent_en if scenes else "dialogue",
+                duration_s=max(1.0, dur),
+                keyframe_index=0,
+            )
+        ]
+        segs = render_ltx_i2v_multiscene(
+            req,
+            work_dir,
+            [key_paths[0]],
+            scenes_a2v,
+            style_lora,
+            avatar_lora,
+        )
+        silent = work_dir / "ltx_silent.mp4"
+        concat_segments(
+            work_dir,
+            segs,
+            silent,
+            crossfade=req.smooth_scene_transitions,
+        )
+        _mux_video_audio(silent, audio_mp3, out_video)
+        return
+
+    segs = render_ltx_i2v_multiscene(req, work_dir, key_paths, scenes, style_lora, avatar_lora)
+    silent = work_dir / "ltx_silent.mp4"
+    concat_segments(
+        work_dir,
+        segs,
+        silent,
+        crossfade=req.smooth_scene_transitions,
     )
+    _mux_video_audio(silent, audio_mp3, out_video)

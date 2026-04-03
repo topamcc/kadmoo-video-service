@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.routes.health import router as health_router
 from api.routes.jobs import router as jobs_router
+from api.routes.training import router as training_router
 from config import get_settings
 
 
@@ -34,6 +35,7 @@ app.add_middleware(
 
 app.include_router(health_router)
 app.include_router(jobs_router)
+app.include_router(training_router)
 
 
 @app.get("/")

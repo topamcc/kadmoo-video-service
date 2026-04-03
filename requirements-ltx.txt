@@ -1,0 +1,10 @@
+# Optional GPU stack for scripts/ltx_i2v_scene.py (install into LTX-2 uv venv or worker venv).
+# Pin versions to your CUDA — adjust per https://pytorch.org/get-started/locally/
+torch>=2.5.0
+torchvision>=0.20.0
+diffusers>=0.32.0
+transformers>=4.46.0
+accelerate>=1.1.0
+safetensors>=0.4.0
+pillow>=10.0.0
+numpy>=1.26.0

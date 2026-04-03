@@ -59,6 +59,9 @@ def health() -> dict:
         "queue_depth": max(0, q) if q >= 0 else 0,
         "uptime_probe": True,
         "ltx_stub_mode": settings.ltx_stub_mode,
+        "ltx_model_configured": bool(settings.ltx_model_path.strip()),
+        "ltx_repo_configured": bool(settings.ltx_repo_path.strip()),
+        "ltx_python_bin_set": bool(settings.ltx_python_bin.strip()),
     }
     if gpu:
         body["gpu_memory_used_gb"] = round(gpu[0], 2)

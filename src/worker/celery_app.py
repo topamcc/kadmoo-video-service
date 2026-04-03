@@ -36,3 +36,4 @@ app.conf.update(
 
 # Register Celery tasks (after `app` exists)
 import worker.tasks  # noqa: E402, I001
+import worker.training_tasks  # noqa: E402, I001

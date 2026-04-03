@@ -23,3 +23,17 @@ def test_health_route_registered():
     paths = [getattr(r, "path", None) for r in app.routes]
     assert "/health" in paths
 
+
+def test_training_lora_route_registered():
+    from main import app
+
+    paths = [getattr(r, "path", None) for r in app.routes]
+    assert "/training/lora" in paths
+
+
+def test_jobs_cancel_route_registered():
+    from main import app
+
+    paths = [getattr(r, "path", None) for r in app.routes]
+    assert any(p is not None and "/cancel" in p for p in paths)
+

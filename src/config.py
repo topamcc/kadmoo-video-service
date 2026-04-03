@@ -35,6 +35,49 @@ class Settings(BaseSettings):
 
     ltx_model_path: str = Field(default="", alias="LTX_MODEL_PATH")
     ltx_upscaler_path: str = Field(default="", alias="LTX_UPSCALER_PATH")
+    ltx_python_bin: str = Field(
+        default="",
+        alias="LTX_PYTHON_BIN",
+        description="Python with torch+diffusers for scripts/ltx_i2v_scene.py (e.g. LTX-2 .venv)",
+    )
+    ltx_hf_model_id: str = Field(
+        default="Lightricks/LTX-2.3",
+        alias="LTX_HF_MODEL_ID",
+        description="Hugging Face model id fallback when using from_pretrained",
+    )
+    ltx_use_spatial_upscaler: bool = Field(
+        default=False,
+        alias="LTX_USE_SPATIAL_UPSCALER",
+        description="If true and LTX_UPSCALER_PATH set, run spatial upscale subprocess after concat",
+    )
+    replicate_api_token: str = Field(
+        default="",
+        alias="REPLICATE_API_TOKEN",
+        description="Optional: MusicGen BGM via Replicate",
+    )
+    ltx_repo_path: str = Field(
+        default="",
+        alias="LTX_REPO_PATH",
+        description="Path to cloned Lightricks/LTX-2 repo for optional LoRA training jobs",
+    )
+    ltx_official_i2v_module: str = Field(
+        default="",
+        alias="LTX_OFFICIAL_I2V_MODULE",
+        description=(
+            "If set with LTX_REPO_PATH, try `python -m <module>` for I2V before Diffusers script "
+            "(module name depends on upstream LTX-2 version)"
+        ),
+    )
+    ltx_distilled_lora_path: str = Field(
+        default="",
+        alias="LTX_DISTILLED_LORA_PATH",
+        description="Optional distilled LoRA .safetensors for two-stage / official pipelines",
+    )
+    ltx_trainer_config_template: str = Field(
+        default="",
+        alias="LTX_TRAINER_CONFIG_TEMPLATE",
+        description="YAML file with {data_dir} and {output_dir} placeholders for ltx-trainer",
+    )
     fp8_quantization: bool = Field(default=False, alias="FP8_QUANTIZATION")
     ltx_stub_mode: bool = Field(
         default=True,

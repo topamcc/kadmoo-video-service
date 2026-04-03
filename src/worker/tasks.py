@@ -13,6 +13,7 @@ from worker.celery_app import app
 
 from config import get_settings
 from job_state import save_job_status
+from pipelines.bgm import generate_bgm_bed, mix_voice_and_bgm
 from pipelines.postprocess import postprocess
 from pipelines.tts import resolve_voice_id, synthesize_speech_hebrew
 from pipelines.upscale import upscale_if_needed
@@ -107,6 +108,25 @@ def generate_video(self, payload_dict: dict) -> None:
         _emit(req, "video.progress", st)
         synthesize_speech_hebrew(voice_id=voice_id, text=req.script_he, out_path=speech_mp3)
 
+        speech_for_render = speech_mp3
+        dur_speech = _probe_duration(speech_mp3)
+        if req.generate_bgm:
+            st_bgm = VideoJobStatus(
+                job_id=req.job_id,
+                status="generating_speech",
+                progress=30,
+                message="מוסיף מוזיקת רקע (אופציונלי)…",
+                voice_id=voice_id,
+            )
+            _emit(req, "video.progress", st_bgm)
+            try:
+                bgm = generate_bgm_bed(max(5.0, dur_speech or 10.0), work, req)
+                mix_path = work / "speech_with_bgm.mp3"
+                mix_voice_and_bgm(speech_mp3, bgm, mix_path)
+                speech_for_render = mix_path
+            except Exception:
+                speech_for_render = speech_mp3
+
         st = VideoJobStatus(
             job_id=req.job_id,
             status="rendering_base",
@@ -115,7 +135,7 @@ def generate_video(self, payload_dict: dict) -> None:
             voice_id=voice_id,
         )
         _emit(req, "video.progress", st)
-        run_ltx_pipeline(req, work, speech_mp3, raw_video)
+        run_ltx_pipeline(req, work, speech_for_render, raw_video)
 
         st = VideoJobStatus(
             job_id=req.job_id,
