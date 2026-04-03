@@ -2,6 +2,11 @@
 
 מסמך זה מפריד בין מה שאתה עושה ב-UI / בטרמינל שלך, לבין מה שהקוד כבר תומך בו.
 
+## חשוב: תבנית PyTorch רגילה ב-RunPod
+
+בתוך הפוד **אין** לרוב הרשאות להריץ `dockerd` (שגיאות `overlay` / `iptables Permission denied`).  
+במקרה כזה **אל תנסה Docker** — עבור ל־**[RUNPOD-NATIVE.md](./RUNPOD-NATIVE.md)** (Redis + Celery + Uvicorn ישירות).
+
 ---
 
 ## חלק א’ — רק אתה (לא אוטומטי)
