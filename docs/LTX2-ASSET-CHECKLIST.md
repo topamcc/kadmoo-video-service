@@ -24,12 +24,14 @@ Optional: `LTX_DISTILLED_LORA_PATH` in kadmoo-video-service `.env` when you use 
 ## Text encoder
 
 - **Gemma 3** — download all assets from the Hugging Face repo linked in the official LTX-2 README. Missing encoder files usually cause import or load failures inside `ltx-pipelines`.
+- Set **`LTX_GEMMA_ROOT`** in `.env` to the directory that contains those files (same path you pass to upstream `--gemma-root`).
 
 ## Environment sync
 
-- `LTX_PYTHON_BIN` = Python from `uv sync` inside the cloned LTX-2 repo (has `ltx-core` / `ltx-pipelines` on the path).
-- `LTX_REPO_PATH` = root of the cloned `LTX-2` repo (needed for official `-m ltx_pipelines...` and for `ltx-trainer`).
-- `LTX_STUB_MODE=false` and non-empty `LTX_MODEL_PATH` or official module configured — otherwise the worker uses FFmpeg slideshow.
+- `LTX_PYTHON_BIN` = Python from `uv sync` inside the cloned LTX-2 repo (has `ltx-core` / `ltx-pipelines` importable).
+- `LTX_REPO_PATH` = root of the cloned `LTX-2` repo (optional if packages are installed editable; used by `scripts/ltx_official_try_import.py` to prepend `src` paths).
+- `LTX_STUB_MODE=false` and non-empty `LTX_MODEL_PATH` — otherwise the worker uses FFmpeg slideshow.
+- **`LTX_USE_OFFICIAL_PIPELINES=true`** — after `LTX_GEMMA_ROOT`, `LTX_UPSCALER_PATH`, and (for two-stage HQ) `LTX_DISTILLED_LORA_PATH` are set, the worker runs **`python -m ltx_pipelines.<module>`** instead of the Diffusers-only path inside `scripts/ltx_i2v_scene.py`. Mapping: `pipeline_mode=two_stage_hq` → `ti2vid_two_stages_hq`, `distilled_fast` → `distilled`. `diffusers_i2v` stays on Diffusers unless you only enable the legacy `LTX_OFFICIAL_I2V_MODULE` flow.
 
 ## Smoke order
 

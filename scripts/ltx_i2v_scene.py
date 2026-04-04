@@ -2,8 +2,10 @@
 """
 One-scene image-to-video helper for kadmoo-video-service (subprocess from worker).
 
-1) Optional: try `uv run python -m <LTX_OFFICIAL_I2V_MODULE>` from LTX_REPO_PATH (upstream CLI varies by version).
-2) Else: Hugging Face Diffusers LTX pipeline when available; otherwise exits with code 2.
+1) Optional: official Lightricks `python -m ltx_pipelines.*` when LTX_USE_OFFICIAL_PIPELINES=true
+   and pipeline_mode is two_stage_hq / distilled_fast (see env checklist in docs).
+2) Optional legacy: `uv run python -m <LTX_OFFICIAL_I2V_MODULE>` from LTX_REPO_PATH.
+3) Else: Hugging Face Diffusers LTX pipeline when available; otherwise exits with code 2.
 
 Usage:
   python scripts/ltx_i2v_scene.py --image in.jpg --prompt "..." --output out.mp4 \\
@@ -18,9 +20,117 @@ import sys
 from pathlib import Path
 
 
+OFFICIAL_MODULES: dict[str, str] = {
+    "two_stage_hq": "ltx_pipelines.ti2vid_two_stages_hq",
+    "distilled_fast": "ltx_pipelines.distilled",
+}
+
+
+def _env_truthy(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def _cond_strength() -> str:
+    return os.environ.get("LTX_IMAGE_CONDITIONING_STRENGTH", "0.85").strip() or "0.85"
+
+
+def _distilled_lora_strength() -> str:
+    return os.environ.get("LTX_DISTILLED_LORA_STRENGTH", "0.8").strip() or "0.8"
+
+
+def _run_official_ltx_pipelines_cli(args: argparse.Namespace) -> int:
+    """
+    Invoke upstream `python -m ltx_pipelines.<module>`. Return 0 on success, 3 to fall back.
+    """
+    mode = args.pipeline_mode
+    if mode not in OFFICIAL_MODULES:
+        return 3
+    if not _env_truthy("LTX_USE_OFFICIAL_PIPELINES"):
+        return 3
+
+    gemma = os.environ.get("LTX_GEMMA_ROOT", "").strip()
+    ups = os.environ.get("LTX_UPSCALER_PATH", "").strip()
+    ck = (args.checkpoint or "").strip()
+    out_path = Path(args.output)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if not gemma or not Path(gemma).is_dir():
+        return 3
+    if not ups or not Path(ups).is_file():
+        return 3
+    if not ck or not Path(ck).is_file():
+        return 3
+
+    module = OFFICIAL_MODULES[mode]
+    cmd: list[str] = [sys.executable, "-m", module]
+
+    if mode == "distilled_fast":
+        cmd.extend(["--distilled-checkpoint-path", str(Path(ck).resolve())])
+    else:
+        dl = os.environ.get("LTX_DISTILLED_LORA_PATH", "").strip()
+        if not dl or not Path(dl).is_file():
+            return 3
+        cmd.extend(
+            [
+                "--checkpoint-path",
+                str(Path(ck).resolve()),
+                "--distilled-lora",
+                str(Path(dl).resolve()),
+                _distilled_lora_strength(),
+            ]
+        )
+
+    cmd.extend(
+        [
+            "--spatial-upsampler-path",
+            str(Path(ups).resolve()),
+            "--gemma-root",
+            str(Path(gemma).resolve()),
+            "--prompt",
+            args.prompt,
+            "--output-path",
+            str(out_path.resolve()),
+            "--width",
+            str(args.width),
+            "--height",
+            str(args.height),
+            "--num-frames",
+            str(args.num_frames),
+            "--frame-rate",
+            str(args.fps),
+            "--seed",
+            str(args.seed),
+            "--image",
+            str(Path(args.image).resolve()),
+            "0",
+            _cond_strength(),
+        ]
+    )
+
+    if args.enhance_prompt:
+        cmd.append("--enhance-prompt")
+    if _env_truthy("FP8_QUANTIZATION"):
+        cmd.extend(["--quantization", "fp8-cast"])
+
+    if args.lora_path and Path(args.lora_path).is_file():
+        cmd.extend(["--lora", str(Path(args.lora_path).resolve()), str(args.lora_scale)])
+
+    repo = os.environ.get("LTX_REPO_PATH", "").strip()
+    cwd = Path(repo) if repo and Path(repo).is_dir() else None
+    try:
+        r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=7200)
+    except FileNotFoundError:
+        return 3
+    if r.returncode == 0 and out_path.is_file() and out_path.stat().st_size > 1000:
+        return 0
+    if r.stderr or r.stdout:
+        print((r.stderr or r.stdout)[:4000], file=sys.stderr)
+    return 3
+
+
 def _try_official_uv_module(repo: str, module: str, args: argparse.Namespace) -> int:
     """
-    Attempt upstream ltx_pipelines CLI. Return 0 on success, 3 if skipped/failed so caller may fall back.
+    Attempt upstream ltx_pipelines CLI via uv. Return 0 on success, 3 if skipped/failed so caller may fall back.
     """
     out_path = Path(args.output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -32,7 +142,6 @@ def _try_official_uv_module(repo: str, module: str, args: argparse.Namespace) ->
         module,
     ]
     ck = str(Path(args.checkpoint)) if args.checkpoint and Path(args.checkpoint).is_file() else ""
-    # Several upstream CLIs use these names; try a small set (first success wins).
     templates: list[list[str]] = [
         [
             "--prompt",
@@ -103,26 +212,26 @@ def main() -> int:
         "--pipeline-mode",
         default="diffusers_i2v",
         choices=("diffusers_i2v", "distilled_fast", "two_stage_hq"),
-        help="distilled_fast/two_stage_hq may trigger official module when env is set",
+        help="Maps to official ltx_pipelines when LTX_USE_OFFICIAL_PIPELINES=true",
     )
-    p.add_argument("--enhance-prompt", action="store_true", help="Pass through to pipeline if supported")
+    p.add_argument("--enhance-prompt", action="store_true", help="Upstream --enhance-prompt when supported")
     args = p.parse_args()
-
-    repo = os.environ.get("LTX_REPO_PATH", "").strip()
-    official_mod = os.environ.get("LTX_OFFICIAL_I2V_MODULE", "").strip()
-    if (
-        official_mod
-        and repo
-        and args.pipeline_mode in ("distilled_fast", "two_stage_hq")
-    ):
-        rc = _try_official_uv_module(repo, official_mod, args)
-        if rc == 0:
-            return 0
 
     img_path = Path(args.image)
     if not img_path.is_file():
         print(f"Image not found: {img_path}", file=sys.stderr)
         return 1
+
+    rc = _run_official_ltx_pipelines_cli(args)
+    if rc == 0:
+        return 0
+
+    repo = os.environ.get("LTX_REPO_PATH", "").strip()
+    official_mod = os.environ.get("LTX_OFFICIAL_I2V_MODULE", "").strip()
+    if official_mod and repo and args.pipeline_mode in ("distilled_fast", "two_stage_hq"):
+        rc = _try_official_uv_module(repo, official_mod, args)
+        if rc == 0:
+            return 0
 
     try:
         import torch
@@ -139,7 +248,6 @@ def main() -> int:
     device = "cuda" if torch.cuda.is_available() else "cpu"
     dtype = torch.bfloat16 if device == "cuda" else torch.float32
 
-    # Try common LTX class names across diffusers versions
     pipe = None
     for cls_name in ("LTX2Pipeline", "LTXPipeline", "LtxPipeline"):
         cls = getattr(__import__("diffusers", fromlist=[cls_name]), cls_name, None)
@@ -200,7 +308,6 @@ def main() -> int:
     try:
         result = pipe(**gen_kwargs)
     except TypeError:
-        # Older signatures: drop fps / enhance_prompt
         gen_kwargs.pop("fps", None)
         gen_kwargs.pop("enhance_prompt", None)
         result = pipe(**gen_kwargs)
@@ -210,7 +317,6 @@ def main() -> int:
         print("No frames in pipeline output", file=sys.stderr)
         return 2
 
-    # result.frames may be list of PIL or list of tensors
     first = frames[0] if isinstance(frames, list) else frames
     if hasattr(first, "save"):
         pil_list = list(frames) if isinstance(frames, list) else [frames]
@@ -224,8 +330,6 @@ def main() -> int:
     tmp_dir.mkdir(parents=True, exist_ok=True)
     for i, im in enumerate(pil_list):
         im.save(tmp_dir / f"f{i:05d}.png")
-
-    import subprocess
 
     pattern = str(tmp_dir / "f%05d.png")
     subprocess.run(

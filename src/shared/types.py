@@ -16,7 +16,8 @@ class SceneConfig(BaseModel):
 
 RenderMode = Literal["image_to_video", "audio_to_video"]
 
-# diffusers_i2v = scripts/ltx_i2v_scene.py; official_* tries LTX_OFFICIAL_I2V_MODULE from LTX_REPO_PATH first
+# diffusers_i2v = Diffusers in scripts/ltx_i2v_scene.py;
+# distilled_fast / two_stage_hq → ltx_pipelines.distilled / ti2vid_two_stages_hq when LTX_USE_OFFICIAL_PIPELINES=true
 PipelineMode = Literal["diffusers_i2v", "distilled_fast", "two_stage_hq"]
 
 

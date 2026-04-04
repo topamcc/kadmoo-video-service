@@ -11,13 +11,17 @@ Keep these three pins aligned when upgrading:
 | Field | Notes |
 |-------|--------|
 | `pipeline_mode` | `diffusers_i2v` (default), `distilled_fast`, `two_stage_hq` |
-| `enhance_prompt` | Passed into Diffusers path when supported |
+| `enhance_prompt` | Passed to Diffusers and to official `ltx_pipelines` CLIs as `--enhance-prompt` when enabled |
 | `smooth_scene_transitions` | FFmpeg crossfade between scene segments |
 | `render_mode` | `image_to_video` / `audio_to_video` |
 
 ## Official CLI
 
-If `LTX_OFFICIAL_I2V_MODULE` is set, `scripts/ltx_i2v_scene.py` tries `uv run python -m <module>` from `LTX_REPO_PATH` before Diffusers. CLI flags differ by upstream version — adjust `scripts/ltx_i2v_scene.py` attempts if your LTX commit changes.
+When **`LTX_USE_OFFICIAL_PIPELINES=true`** and assets in [LTX2-ASSET-CHECKLIST.md](./LTX2-ASSET-CHECKLIST.md) are present, `scripts/ltx_i2v_scene.py` runs **`python -m ltx_pipelines.ti2vid_two_stages_hq`** or **`ltx_pipelines.distilled`** (from `pipeline_mode`) before falling back to Diffusers.
+
+Legacy: if `LTX_OFFICIAL_I2V_MODULE` is set, the same script still tries `uv run python -m <module>` from `LTX_REPO_PATH` after the fixed mapping fails.
+
+Multi-keyframe and A2V options: [LTX-KF-A2V-EVAL.md](./LTX-KF-A2V-EVAL.md).
 
 ## Training
 

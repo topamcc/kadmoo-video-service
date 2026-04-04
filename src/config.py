@@ -73,6 +73,36 @@ class Settings(BaseSettings):
         alias="LTX_DISTILLED_LORA_PATH",
         description="Optional distilled LoRA .safetensors for two-stage / official pipelines",
     )
+    ltx_gemma_root: str = Field(
+        default="",
+        alias="LTX_GEMMA_ROOT",
+        description="Root directory of Gemma text encoder files (required for official ltx_pipelines CLI)",
+    )
+    ltx_use_official_pipelines: bool = Field(
+        default=False,
+        alias="LTX_USE_OFFICIAL_PIPELINES",
+        description=(
+            "If true, scripts prefer Lightricks `python -m ltx_pipelines.*` when assets are set "
+            "(see docs/LTX2-ASSET-CHECKLIST.md)"
+        ),
+    )
+    ltx_distilled_lora_strength: float = Field(
+        default=0.8,
+        ge=0.0,
+        le=2.0,
+        alias="LTX_DISTILLED_LORA_STRENGTH",
+        description="Strength passed to official two-stage --distilled-lora PATH STRENGTH",
+    )
+    ltx_multi_keyframe_strategy: str = Field(
+        default="concat",
+        alias="LTX_MULTI_KEYFRAME_STRATEGY",
+        description="concat (default) | keyframe_interpolation — see docs/LTX-KF-A2V-EVAL.md",
+    )
+    ltx_audio_to_video_pipeline: str = Field(
+        default="i2v_mux",
+        alias="LTX_AUDIO_TO_VIDEO_PIPELINE",
+        description="i2v_mux (silent I2V + ffmpeg mux) | a2vid_two_stage — official A2V when assets allow",
+    )
     ltx_trainer_config_template: str = Field(
         default="",
         alias="LTX_TRAINER_CONFIG_TEMPLATE",

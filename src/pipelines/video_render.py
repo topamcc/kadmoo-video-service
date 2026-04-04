@@ -11,7 +11,12 @@ import httpx
 from config import get_settings
 from pipelines.identity import describe_identity_prompt
 from pipelines.lora_cache import download_optional
-from pipelines.ltx_native import concat_segments, render_ltx_i2v_multiscene
+from pipelines.ltx_native import (
+    concat_segments,
+    official_pipelines_assets_ready,
+    render_ltx_a2vid_single,
+    render_ltx_i2v_multiscene,
+)
 from shared.errors import VideoJobError
 from shared.types import SceneConfig, VideoJobRequest
 
@@ -245,7 +250,6 @@ def run_ltx_pipeline(
     avatar_lora = download_optional(req.avatar_lora_url, work_dir / "loras" / "avatar.safetensors")
 
     if req.render_mode == "audio_to_video":
-        # Single clip driven by narration length (first keyframe)
         dur = _probe_audio_duration(audio_mp3)
         scenes_a2v = [
             SceneConfig(
@@ -255,6 +259,19 @@ def run_ltx_pipeline(
                 keyframe_index=0,
             )
         ]
+        a2v = settings.ltx_audio_to_video_pipeline.strip().lower() == "a2vid_two_stage"
+        if a2v and settings.ltx_use_official_pipelines and official_pipelines_assets_ready():
+            render_ltx_a2vid_single(
+                req,
+                work_dir,
+                key_paths[0],
+                scenes_a2v[0],
+                audio_mp3,
+                out_video,
+                style_lora,
+                avatar_lora,
+            )
+            return
         segs = render_ltx_i2v_multiscene(
             req,
             work_dir,

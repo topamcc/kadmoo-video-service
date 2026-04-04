@@ -62,6 +62,10 @@ def health() -> dict:
         "ltx_model_configured": bool(settings.ltx_model_path.strip()),
         "ltx_repo_configured": bool(settings.ltx_repo_path.strip()),
         "ltx_python_bin_set": bool(settings.ltx_python_bin.strip()),
+        "ltx_use_official_pipelines": settings.ltx_use_official_pipelines,
+        "ltx_gemma_configured": bool(settings.ltx_gemma_root.strip()),
+        "ltx_multi_keyframe_strategy": settings.ltx_multi_keyframe_strategy.strip(),
+        "ltx_audio_to_video_pipeline": settings.ltx_audio_to_video_pipeline.strip(),
     }
     if gpu:
         body["gpu_memory_used_gb"] = round(gpu[0], 2)
