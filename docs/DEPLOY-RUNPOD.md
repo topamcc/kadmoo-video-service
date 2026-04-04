@@ -99,6 +99,7 @@ docker compose logs -f video-worker --tail 50
 | Webhook נדחה (403) | `WEBHOOK_HMAC_SECRET` ≠ `VIDEO_SERVICE_WEBHOOK_SECRET` |
 | ElevenLabs / TTS | `ELEVENLABS_API_KEY` + `ELEVENLABS_DEFAULT_VOICE_ID` |
 | העלאה ל-Supabase נכשלת | `SUPABASE_SERVICE_ROLE_KEY` + bucket `studio-assets` קיים |
+| Jobs נשארים `queued` / 0% ב-Supabase | Worker לא רץ — ראה **[TROUBLESHOOT-STUCK-QUEUED.md](./TROUBLESHOOT-STUCK-QUEUED.md)** |
 
 ---
 

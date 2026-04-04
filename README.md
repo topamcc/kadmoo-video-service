@@ -54,6 +54,8 @@ Set `LTX_STUB_MODE=false` and install/configure **ltx-pipelines** against `LTX_M
 
 Step-by-step (Hebrew checklist): **[docs/DEPLOY-RUNPOD.md](./docs/DEPLOY-RUNPOD.md)**
 
+**Jobs stuck at `queued` / 0%?** See **[docs/TROUBLESHOOT-STUCK-QUEUED.md](./docs/TROUBLESHOOT-STUCK-QUEUED.md)** (Celery worker + port 4100).
+
 **RunPod PyTorch pod (Docker fails inside container):** **[docs/RUNPOD-NATIVE.md](./docs/RUNPOD-NATIVE.md)**
 
 **One-shot (bootstrap + background API/worker):** **[docs/RUNPOD-ONE-PAGE-HE.md](./docs/RUNPOD-ONE-PAGE-HE.md)** — `scripts/runpod-bootstrap.sh`, `runpod-start.sh`, `runpod-stop.sh`, `runpod-status.sh`. Manual: `scripts/run-native-api.sh` + `scripts/run-native-worker.sh` after `chmod +x scripts/*.sh`.

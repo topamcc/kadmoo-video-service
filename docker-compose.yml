@@ -1,3 +1,5 @@
+# kadmoo-video-service: run ALL THREE — redis + video-api + video-worker.
+# Without video-worker (Celery), POST /jobs succeeds but jobs stay queued in Redis forever.
 # Redis is NOT published to the host — only video-api / video-worker reach it (safer on RunPod).
 services:
   redis:
